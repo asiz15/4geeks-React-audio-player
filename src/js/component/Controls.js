@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import Slider, { Range } from "rc-slider";
+import Slider, { Handle, SliderTooltip } from "rc-slider";
 import "rc-slider/assets/index.css";
 
 export const Controls = ({
@@ -14,6 +14,10 @@ export const Controls = ({
 	setMode,
 	duration
 }) => {
+	const [durationSlider, setDurationSlider] = useState(0);
+	const intervalId = useRef(null);
+	const [showVolume, setShowVolume] = useState(false);
+
 	const baseUrl = "https://assets.breatheco.de/apis/sound";
 	const handleCentral = () => {
 		if (status === "playing") {
@@ -26,6 +30,10 @@ export const Controls = ({
 			}
 			player.current.play();
 			setStatus("playing");
+			intervalId.current = setInterval(
+				() => setDurationSlider(durationSlider + 1),
+				durationFactor()
+			);
 		}
 	};
 	const handleNext = () => {
@@ -100,17 +108,55 @@ export const Controls = ({
 			setMode("shuffle");
 		}
 	};
-
 	const parseDuration = () => {
 		return new Date(1000 * duration).toISOString().substr(11, 8);
 	};
+	const durationFactor = () => {
+		return (duration / 100) * 1000;
+	};
+	const handleVolumeChange = data => {
+		player.current.volume = data / 100;
+	};
+	const handleBarChange = data => {
+		console.log(data);
+		if (status === "playing") {
+			setDurationSlider(data);
+			player.current.currentTime = (duration * data) / 100;
+		}
+	};
+
+	useEffect(() => {
+		if (durationSlider < 100 && status === "playing") {
+			intervalId.current = setInterval(
+				() => setDurationSlider(durationSlider + 1),
+				durationFactor()
+			);
+		}
+		return () => {
+			clearInterval(intervalId.current);
+		};
+	});
+	useEffect(() => {
+		clearInterval(intervalId.current);
+		setDurationSlider(0);
+	}, [current]);
 	return (
 		<div className="d-flex controls">
-			<div className="w-100">
-				<Slider min={0} max={100} defaultValue={0} />
+			<div className="w-100 song-slider px-2">
+				<Slider
+					min={0}
+					max={100}
+					value={durationSlider}
+					railStyle={{ backgroundColor: "#1E1E1E", height: 9 }}
+					trackStyle={{ backgroundColor: "#1AB26B", height: 9 }}
+					handleStyle={{
+						backgroundColor: "#00A64E"
+					}}
+					onChange={handleBarChange}
+				/>
 			</div>
 
-			{status === "playing" && current.song !== null && (
+			{current.song !== null && (
 				<div className="song-meta text-white pl-3">
 					<span className="p-0 m-0">{current?.song?.name}</span>
 					<small className="text-secondary p-0 m-0">
@@ -159,8 +205,36 @@ export const Controls = ({
 							mode === "shuffle" ? "text-spotify" : "text-white"
 						}`}></i>
 				</button>
+				<div style={{ width: "200px" }} className="d-flex">
+					<Slider
+						min={0}
+						max={100}
+						reverse
+						defaultValue={95}
+						style={{ width: 80, marginRight: 17, marginTop: 4 }}
+						handle={handle}
+						onChange={handleVolumeChange}
+					/>
+					<i
+						style={{ fontSize: "1.2em" }}
+						className="fas fa-volume-off"></i>
+				</div>
 			</div>
 		</div>
+	);
+};
+
+const handle = props => {
+	const { value, dragging, index, ...restProps } = props;
+	return (
+		<SliderTooltip
+			prefixCls="rc-slider-tooltip"
+			overlay={`${value} %`}
+			visible={dragging}
+			placement="top"
+			key={index}>
+			<Handle value={value} {...restProps} />
+		</SliderTooltip>
 	);
 };
 

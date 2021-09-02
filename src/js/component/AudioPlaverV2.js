@@ -46,8 +46,11 @@ export const AudioPlaverV2 = () => {
 		console.log(audioPlayer.current.duration);
 		setDuration(audioPlayer.current.duration);
 	};
-	const handleChangeDuration = () => {
-		console.log("duration change!!");
+
+	const handlePlayerError = err => {
+		if (err) {
+			alert("Errrrroooor!");
+		}
 	};
 	useEffect(() => {
 		loadSongs();
@@ -62,11 +65,11 @@ export const AudioPlaverV2 = () => {
 			</div>
 			<div className="list-group audio-player--list w-100">
 				<audio
+					onError={handlePlayerError}
 					onLoadedData={handleSongLoad}
 					ref={audioPlayer}
 					preload="metadata"
-					loop={mode === "loop"}
-					durationchange={handleChangeDuration}></audio>
+					loop={mode === "loop"}></audio>
 				{loading && <Loading></Loading>}
 				{songs.map((song, index) => {
 					return (
